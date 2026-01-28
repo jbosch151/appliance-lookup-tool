@@ -23,7 +23,7 @@ def configure_gemini(api_key: Optional[str] = None):
     if not GEMINI_AVAILABLE:
         return False  # Return False instead of raising
     
-    key = api_key or os.getenv('GOOGLE_API_KEY')
+    key = api_key or os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY')
     if not key:
         logging.warning("No Gemini API key found - fallback will not be available")
         return False  # Return False instead of raising
