@@ -23,5 +23,5 @@ easyocr
 paddlepaddle  # Stage 1: Fast local OCR
 paddleocr  # Better than Tesseract, works offline
 google-generativeai  # Stage 2: Gemini Vision fallback (free tier)
-opencv-python>=4.8.0
+opencv-python-headless>=4.8.0
 pytesseract>=0.3.10
