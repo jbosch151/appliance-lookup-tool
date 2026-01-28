@@ -69,7 +69,9 @@ def extract_with_gemini(image_path: str, api_key: Optional[str] = None) -> Dict[
         # Falls back to 1.5 Flash if 2.0 is not available
         try:
             model = genai.GenerativeModel('gemini-2.0-flash-exp')
-        except:
+            logging.info("Using Gemini 2.0 Flash model")
+        except Exception as e:
+            logging.info(f"Gemini 2.0 not available ({e}), falling back to 1.5 Flash")
             model = genai.GenerativeModel('gemini-1.5-flash')
         
         # Read and encode image
@@ -135,15 +137,15 @@ Important:
         
         return extracted
         
-    except json.JSONDecodeError as e:
-        logging.error(f"Failed to parse Gemini response as JSON: {e}")
-        logging.error(f"Response was: {response_text}")
+    except json.JSONDecodeError as e: if 'response_text' in locals() else 'No response'}")
         return {
             'brand': 'Unknown',
             'model': 'Unknown',
             'serial': 'Unknown',
             'other': f'Gemini parsing error: {str(e)}'
         }
+    except Exception as e:
+        logging.error(f"Gemini extraction failed: {type(e).__name__}: {e}", exc_info=True
     except Exception as e:
         logging.error(f"Gemini extraction failed: {e}")
         return {
