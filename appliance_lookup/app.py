@@ -3,10 +3,18 @@ import uuid
 import logging
 from flask import Flask, render_template, request, jsonify, url_for
 from werkzeug.utils import secure_filename
-import cv2
-import numpy as np
 import re
 from PIL import Image
+
+# Try to import cv2 and numpy (needed for image processing)
+try:
+    import cv2
+    import numpy as np
+    CV2_AVAILABLE = True
+except ImportError:
+    CV2_AVAILABLE = False
+    cv2 = None
+    np = None
 
 # Optional imports for local OCR (not needed when using Gemini)
 try:
@@ -39,8 +47,14 @@ from appliance_lookup.parser_module import parse_appliance_text
 from appliance_lookup.appliance_label_parser import parse_appliance_label
 from appliance_lookup.confidence_scorer import calculate_confidence_scores
 from appliance_lookup.brand_parsers import parse_with_brand_parser
-from appliance_lookup.quality_checker import assess_image_quality
 from appliance_lookup.gemini_vision import extract_with_gemini, calculate_confidence
+
+# Only import quality_checker if cv2 is available
+if CV2_AVAILABLE:
+    from appliance_lookup.quality_checker import assess_image_quality
+else:
+    def assess_image_quality(image_path):
+        return {"score": 50, "level": "fair", "issues": [], "recommendations": []}
 
 # Initialize TrOCR (lazy loading to avoid startup delay)
 trocr_processor = None
