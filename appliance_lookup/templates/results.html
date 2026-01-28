@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Appliance Details - Results</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#667eea">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="/static/manifest.json">
+    
+    <link rel="stylesheet" href="/static/styles.css">
+    <style>
+        .confidence-bar {
+            width: 100%;
+            height: 24px;
+            background: linear-gradient(to right, #e2e8f0, #edf2f7);
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 8px 0;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+        }
+        .confidence-fill {
+            height: 100%;
+            transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 13px;
+            font-weight: 700;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+        .confidence-high {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+        }
+        .confidence-medium {
+            background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
+        }
+        .confidence-low {
+            background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
+        }
+        .field-container {
+            margin: 20px 0;
+            padding: 20px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            background: #f7fafc;
+            transition: all 0.3s ease;
+        }
+        .field-container:hover {
+            border-color: #cbd5e0;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+        .field-container.needs-review {
+            border-color: #ed8936;
+            background: linear-gradient(to right, #fffaf0, #fef5e7);
+            box-shadow: 0 0 0 3px rgba(237, 137, 54, 0.1);
+        }
+        .field-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #718096;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+        .field-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 10px;
+            word-break: break-word;
+        }
+        .edit-button {
+            margin-left: 12px;
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+        .edit-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        .edit-input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 2px solid #cbd5e0;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            transition: border-color 0.2s;
+        }
+        .edit-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        .save-button, .cancel-button {
+            margin: 5px 5px 0 0;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+        .save-button {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            color: white;
+            box-shadow: 0 2px 8px rgba(72, 187, 120, 0.3);
+        }
+        .save-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(72, 187, 120, 0.4);
+        }
+        .cancel-button {
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+        .cancel-button:hover {
+            background: #cbd5e0;
+        }
+        .confidence-details {
+            font-size: 13px;
+            color: #718096;
+            margin-top: 10px;
+            line-height: 1.6;
+        }
+        .overall-confidence {
+            margin: 20px 0;
+            padding: 20px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            background: #f7fafc;
+            transition: all 0.3s ease;
+        }
+        .overall-confidence:hover {
+            border-color: #cbd5e0;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+        .overall-confidence .field-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #718096;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+        .overall-confidence .field-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 10px;
+        }
+        .review-warning {
+            background: linear-gradient(to right, #fffaf0, #fef5e7);
+            border-left: 5px solid #ed8936;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(237, 137, 54, 0.15);
+        }
+        .review-warning.error {
+            background: linear-gradient(to right, #fff5f5, #fed7d7);
+            border-left-color: #fc8181;
+        }
+        .review-warning strong {
+            display: block;
+            font-size: 18px;
+            margin-bottom: 12px;
+            color: #2d3748;
+        }
+        .review-warning ul {
+            margin: 10px 0 10px 20px;
+            color: #4a5568;
+        }
+        .review-warning li {
+            margin: 6px 0;
+            line-height: 1.5;
+        }
+        .extraction-method {
+            display: inline-block;
+            padding: 6px 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+        .button-group {
+            text-align: center;
+            margin-top: 40px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Appliance Details</h1>
+
+    {% if extraction_method %}
+    <div style="text-align: center;">
+        <span class="extraction-method">✨ {{ extraction_method }}</span>
+    </div>
+    {% endif %}
+
+    <div class="image-container">
+        <img src="{{ image_url }}" alt="Uploaded Appliance Image">
+    </div>
+
+    <div class="results-box">
+        {% if parsed_data.quality.level == 'poor' %}
+        <div class="review-warning error">
+            <strong>❌ Poor Image Quality ({{ parsed_data.quality.score }}%)</strong>
+            <p><strong>Issues detected:</strong></p>
+            <ul>
+                {% for issue in parsed_data.quality.issues %}
+                <li>{{ issue }}</li>
+                {% endfor %}
+            </ul>
+            <p><strong>Please retake the photo with these improvements:</strong></p>
+            <ul>
+                {% for rec in parsed_data.quality.recommendations %}
+                <li>{{ rec }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% elif parsed_data.quality.level == 'fair' %}
+        <div class="review-warning">
+            <strong>⚠️ Fair Image Quality ({{ parsed_data.quality.score }}%)</strong>
+            <p><strong>Issues detected:</strong></p>
+            <ul>
+                {% for issue in parsed_data.quality.issues %}
+                <li>{{ issue }}</li>
+                {% endfor %}
+            </ul>
+            <p><strong>For better results, consider retaking with:</strong></p>
+            <ul>
+                {% for rec in parsed_data.quality.recommendations %}
+                <li>{{ rec }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        {% if parsed_data.needs_review %}
+        <div class="review-warning">
+            <strong>⚠️ Low Confidence Detection</strong>
+            <p>Some fields may need verification. Please review and edit if necessary.</p>
+        </div>
+        {% endif %}
+
+        <!-- Overall Confidence -->
+        <div class="overall-confidence">
+            <div class="field-label">📊 Overall Confidence</div>
+            <div class="field-value">{{ parsed_data.confidence.overall }}%</div>
+            <div class="confidence-bar">
+                <div class="confidence-fill {% if parsed_data.confidence.overall >= 70 %}confidence-high{% elif parsed_data.confidence.overall >= 40 %}confidence-medium{% else %}confidence-low{% endif %}" 
+                     style="width: {{ parsed_data.confidence.overall }}%;">
+                    {{ parsed_data.confidence.overall }}%
+                </div>
+            </div>
+        </div>
+
+        <!-- Brand Field -->
+        <div class="field-container {% if parsed_data.confidence.brand < 70 %}needs-review{% endif %}">
+            <div class="field-label">🏷️ Brand</div>
+            <div id="brand-display">
+                <span class="field-value">{{ parsed_data.brand }}</span>
+                <button class="edit-button" onclick="editField('brand')">✏️ Edit</button>
+            </div>
+            <div id="brand-edit" style="display: none;">
+                <input type="text" id="brand-input" class="edit-input" value="{{ parsed_data.brand }}">
+                <button class="save-button" onclick="saveField('brand')">💾 Save</button>
+                <button class="cancel-button" onclick="cancelEdit('brand')">✖ Cancel</button>
+            </div>
+            <div class="confidence-bar">
+                <div class="confidence-fill {% if parsed_data.confidence.brand >= 70 %}confidence-high{% elif parsed_data.confidence.brand >= 40 %}confidence-medium{% else %}confidence-low{% endif %}" 
+                     style="width: {{ parsed_data.confidence.brand }}%;">
+                    {{ parsed_data.confidence.brand }}%
+                </div>
+            </div>
+            {% if parsed_data.confidence_details.brand %}
+            <div class="confidence-details">
+                {% for detail in parsed_data.confidence_details.brand %}
+                    • {{ detail }}<br>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Model Field -->
+        <div class="field-container {% if parsed_data.confidence.model < 70 %}needs-review{% endif %}">
+            <div class="field-label">🔢 Model Number</div>
+            <div id="model-display">
+                <span class="field-value">{{ parsed_data.model }}</span>
+                <button class="edit-button" onclick="editField('model')">✏️ Edit</button>
+            </div>
+            <div id="model-edit" style="display: none;">
+                <input type="text" id="model-input" class="edit-input" value="{{ parsed_data.model }}">
+                <button class="save-button" onclick="saveField('model')">💾 Save</button>
+                <button class="cancel-button" onclick="cancelEdit('model')">✖ Cancel</button>
+            </div>
+            <div class="confidence-bar">
+                <div class="confidence-fill {% if parsed_data.confidence.model >= 70 %}confidence-high{% elif parsed_data.confidence.model >= 40 %}confidence-medium{% else %}confidence-low{% endif %}" 
+                     style="width: {{ parsed_data.confidence.model }}%;">
+                    {{ parsed_data.confidence.model }}%
+                </div>
+            </div>
+            {% if parsed_data.confidence_details.model %}
+            <div class="confidence-details">
+                {% for detail in parsed_data.confidence_details.model %}
+                    • {{ detail }}<br>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Serial Field -->
+        <div class="field-container {% if parsed_data.confidence.serial < 70 %}needs-review{% endif %}">
+            <div class="field-label">🔐 Serial Number</div>
+            <div id="serial-display">
+                <span class="field-value">{{ parsed_data.serial }}</span>
+                <button class="edit-button" onclick="editField('serial')">✏️ Edit</button>
+            </div>
+            <div id="serial-edit" style="display: none;">
+                <input type="text" id="serial-input" class="edit-input" value="{{ parsed_data.serial }}">
+                <button class="save-button" onclick="saveField('serial')">💾 Save</button>
+                <button class="cancel-button" onclick="cancelEdit('serial')">✖ Cancel</button>
+            </div>
+            <div class="confidence-bar">
+                <div class="confidence-fill {% if parsed_data.confidence.serial >= 70 %}confidence-high{% elif parsed_data.confidence.serial >= 40 %}confidence-medium{% else %}confidence-low{% endif %}" 
+                     style="width: {{ parsed_data.confidence.serial }}%;">
+                    {{ parsed_data.confidence.serial }}%
+                </div>
+            </div>
+            {% if parsed_data.confidence_details.serial %}
+            <div class="confidence-details">
+                {% for detail in parsed_data.confidence_details.serial %}
+                    • {{ detail }}<br>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="button-group">
+        <a href="/">📸 Upload Another Image</a>
+    </div>
+
+    <script>
+        function editField(fieldName) {
+            document.getElementById(fieldName + '-display').parentElement.style.display = 'none';
+            document.getElementById(fieldName + '-edit').style.display = 'block';
+            document.getElementById(fieldName + '-input').focus();
+        }
+
+        function saveField(fieldName) {
+            const newValue = document.getElementById(fieldName + '-input').value;
+            document.getElementById(fieldName + '-display').textContent = newValue;
+            document.getElementById(fieldName + '-display').parentElement.style.display = 'block';
+            document.getElementById(fieldName + '-edit').style.display = 'none';
+        }
+
+        function cancelEdit(fieldName) {
+            document.getElementById(fieldName + '-display').parentElement.style.display = 'block';
+            document.getElementById(fieldName + '-edit').style.display = 'none';
+        }
+    </script>
+</body>
+</html>

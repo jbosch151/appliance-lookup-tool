@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Appliance Lookup Tool - AI-Powered Label Reader</title>
+  
+  <!-- PWA Meta Tags -->
+  <meta name="description" content="AI-powered appliance label reader with instant brand, model, and serial number extraction">
+  <meta name="theme-color" content="#667eea">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Appliance Lookup">
+  <link rel="manifest" href="/static/manifest.json">
+  <link rel="apple-touch-icon" href="/static/icon-192.png">
+  
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .container {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      padding: 50px 40px;
+      max-width: 500px;
+      width: 100%;
+      animation: fadeIn 0.5s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    h1 {
+      color: #2d3748;
+      font-size: 28px;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    .subtitle {
+      text-align: center;
+      color: #718096;
+      font-size: 14px;
+      margin-bottom: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .ai-badge {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .upload-area {
+      border: 3px dashed #cbd5e0;
+      border-radius: 15px;
+      padding: 40px 20px;
+      text-align: center;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      background: #f7fafc;
+      margin-bottom: 25px;
+    }
+    .upload-area:hover {
+      border-color: #667eea;
+      background: #edf2f7;
+    }
+    .upload-area.dragover {
+      border-color: #667eea;
+      background: #e6f2ff;
+    }
+    .upload-icon {
+      font-size: 48px;
+      margin-bottom: 15px;
+      color: #667eea;
+    }
+    .upload-text {
+      color: #4a5568;
+      font-size: 16px;
+      margin-bottom: 5px;
+    }
+    .upload-hint {
+      color: #a0aec0;
+      font-size: 13px;
+    }
+    input[type="file"] {
+      display: none;
+    }
+    .file-info {
+      background: #edf2f7;
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 20px;
+      display: none;
+      align-items: center;
+      gap: 10px;
+    }
+    .file-info.visible {
+      display: flex;
+    }
+    .file-icon {
+      font-size: 24px;
+    }
+    .file-name {
+      flex: 1;
+      color: #2d3748;
+      font-size: 14px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .remove-file {
+      background: #fc8181;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 28px;
+      height: 28px;
+      cursor: pointer;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+    .remove-file:hover {
+      background: #f56565;
+    }
+    button[type="submit"] {
+      width: 100%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 16px;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+    button[type="submit"]:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+    }
+    button[type="submit"]:active {
+      transform: translateY(0);
+    }
+    button[type="submit"]:disabled {
+      background: #cbd5e0;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+    .features {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      margin-top: 30px;
+      padding-top: 30px;
+      border-top: 1px solid #e2e8f0;
+    }
+    .feature {
+      text-align: center;
+    }
+    .feature-icon {
+      font-size: 24px;
+      margin-bottom: 8px;
+    }
+    .feature-text {
+      font-size: 12px;
+      color: #718096;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔍 Appliance Lookup</h1>
+    <div class="subtitle">
+      <span class="ai-badge">✨ AI-Powered</span>
+      <span>Instant label recognition</span>
+    </div>
+    
+    <form id="upload-form" method="post" enctype="multipart/form-data" action="/process">
+      <div class="upload-area" id="upload-area" onclick="document.getElementById('file').click()">
+        <div class="upload-icon">📸</div>
+        <div class="upload-text">Click to upload or drag & drop</div>
+        <div class="upload-hint">Supports JPG, PNG, HEIC</div>
+      </div>
+      
+      <input id="file" type="file" name="file" accept="image/*" onchange="handleFileSelect()" required>
+      
+      <div class="file-info" id="file-info">
+        <span class="file-icon">📄</span>
+        <span class="file-name" id="filename"></span>
+        <button type="button" class="remove-file" onclick="removeFile()">×</button>
+      </div>
+      
+      <button type="submit" id="submit-btn" disabled>Analyze Label</button>
+    </form>
+    
+    <div class="features">
+      <div class="feature">
+        <div class="feature-icon">⚡</div>
+        <div class="feature-text">Fast Results</div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🎯</div>
+        <div class="feature-text">High Accuracy</div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🔒</div>
+        <div class="feature-text">Secure</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const uploadArea = document.getElementById('upload-area');
+    const fileInput = document.getElementById('file');
+    const fileInfo = document.getElementById('file-info');
+    const filename = document.getElementById('filename');
+    const submitBtn = document.getElementById('submit-btn');
+
+    function handleFileSelect() {
+      if (fileInput.files.length > 0) {
+        filename.textContent = fileInput.files[0].name;
+        fileInfo.classList.add('visible');
+        submitBtn.disabled = false;
+      }
+    }
+
+    function removeFile() {
+      fileInput.value = '';
+      fileInfo.classList.remove('visible');
+      submitBtn.disabled = true;
+    }
+
+    // Drag and drop
+    uploadArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadArea.classList.add('dragover');
+    });
+
+    uploadArea.addEventListener('dragleave', () => {
+      uploadArea.classList.remove('dragover');
+    });
+
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('dragover');
+      if (e.dataTransfer.files.length > 0) {
+        fileInput.files = e.dataTransfer.files;
+        handleFileSelect();
+      }
+    });
+  </script>
+
+  <script>
+    // Register Service Worker for PWA
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/static/sw.js')
+          .then((registration) => {
+            console.log('ServiceWorker registered:', registration.scope);
+          })
+          .catch((err) => {
+            console.log('ServiceWorker registration failed:', err);
+          });
+      });
+    }
+  </script>
+</body>
+</html>
