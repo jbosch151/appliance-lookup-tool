@@ -65,9 +65,9 @@ def extract_with_gemini(image_path: str, api_key: Optional[str] = None) -> Dict[
                 'other': 'Gemini API key not configured'
             }
         
-        # Use Gemini 1.5 Flash (proven, reliable, fast)
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        logging.info("Using Gemini 1.5 Flash model")
+        # Use Gemini 2.0 Flash (latest stable version)
+        model = genai.GenerativeModel('models/gemini-2.0-flash')
+        logging.info("Using Gemini 2.0 Flash model")
         
         # Read and encode image
         with open(image_path, 'rb') as f:
