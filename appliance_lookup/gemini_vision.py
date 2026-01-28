@@ -65,14 +65,9 @@ def extract_with_gemini(image_path: str, api_key: Optional[str] = None) -> Dict[
                 'other': 'Gemini API key not configured'
             }
         
-        # Use Gemini 2.0 Flash (latest, fast, vision-capable)
-        # Falls back to 1.5 Flash if 2.0 is not available
-        try:
-            model = genai.GenerativeModel('gemini-2.0-flash-exp')
-            logging.info("Using Gemini 2.0 Flash model")
-        except Exception as e:
-            logging.info(f"Gemini 2.0 not available ({e}), falling back to 1.5 Flash")
-            model = genai.GenerativeModel('gemini-1.5-flash')
+        # Use Gemini 1.5 Flash (proven, reliable, fast)
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        logging.info("Using Gemini 1.5 Flash model")
         
         # Read and encode image
         with open(image_path, 'rb') as f:
