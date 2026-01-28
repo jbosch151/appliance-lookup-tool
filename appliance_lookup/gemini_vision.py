@@ -28,6 +28,9 @@ def configure_gemini(api_key: Optional[str] = None):
         logging.warning("No Gemini API key found - fallback will not be available")
         return False  # Return False instead of raising
     
+    # DEBUG: Log last 4 chars to verify which key Railway is using
+    logging.info(f"API key detected ending in: ...{key[-4:]}")
+    
     genai.configure(api_key=key)
     logging.info("Gemini API configured successfully")
     return True
