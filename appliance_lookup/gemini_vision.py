@@ -137,7 +137,9 @@ Important:
         
         return extracted
         
-    except json.JSONDecodeError as e: if 'response_text' in locals() else 'No response'}")
+    except json.JSONDecodeError as e:
+        logging.error(f"Failed to parse Gemini response as JSON: {e}")
+        logging.error(f"Response was: {response_text if 'response_text' in locals() else 'No response'}")
         return {
             'brand': 'Unknown',
             'model': 'Unknown',
@@ -145,9 +147,13 @@ Important:
             'other': f'Gemini parsing error: {str(e)}'
         }
     except Exception as e:
-        logging.error(f"Gemini extraction failed: {type(e).__name__}: {e}", exc_info=True
-    except Exception as e:
-        logging.error(f"Gemini extraction failed: {e}")
+        logging.error(f"Gemini extraction failed: {type(e).__name__}: {e}", exc_info=True)
+        return {
+            'brand': 'Unknown',
+            'model': 'Unknown',
+            'serial': 'Unknown',
+            'other': f'Gemini API error: {str(e)}'
+        }
         return {
             'brand': 'Unknown',
             'model': 'Unknown',
