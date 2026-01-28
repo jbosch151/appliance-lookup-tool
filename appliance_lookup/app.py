@@ -5,11 +5,31 @@ from flask import Flask, render_template, request, jsonify, url_for
 from werkzeug.utils import secure_filename
 import cv2
 import numpy as np
-import pytesseract
-import easyocr
 import re
 from PIL import Image
-from transformers import TrOCRProcessor, VisionEncoderDecoderModel
+
+# Optional imports for local OCR (not needed when using Gemini)
+try:
+    import pytesseract
+    tesseract_cmd_path = os.environ.get('TESSERACT_CMD_PATH', '/opt/homebrew/bin/tesseract')
+    pytesseract.pytesseract.tesseract_cmd = tesseract_cmd_path
+    PYTESSERACT_AVAILABLE = True
+except ImportError:
+    PYTESSERACT_AVAILABLE = False
+
+try:
+    import easyocr
+    easyocr_reader = easyocr.Reader(['en'], gpu=False)
+    EASYOCR_AVAILABLE = True
+except ImportError:
+    EASYOCR_AVAILABLE = False
+    easyocr_reader = None
+
+try:
+    from transformers import TrOCRProcessor, VisionEncoderDecoderModel
+    TROCR_AVAILABLE = True
+except ImportError:
+    TROCR_AVAILABLE = False
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -22,22 +42,19 @@ from appliance_lookup.brand_parsers import parse_with_brand_parser
 from appliance_lookup.quality_checker import assess_image_quality
 from appliance_lookup.gemini_vision import extract_with_gemini, calculate_confidence
 
-# Configure Tesseract command path (make configurable via environment variable)
-tesseract_cmd_path = os.environ.get('TESSERACT_CMD_PATH', '/opt/homebrew/bin/tesseract')
-pytesseract.pytesseract.tesseract_cmd = tesseract_cmd_path
-
-# Initialize EasyOCR reader once
-easyocr_reader = easyocr.Reader(['en'], gpu=False)
-
 # Initialize TrOCR (lazy loading to avoid startup delay)
 trocr_processor = None
 trocr_model = None
 
 def get_trocr_model():
     """Lazy load TrOCR model"""
+    if not TROCR_AVAILABLE:
+        return None, None
+    
     global trocr_processor, trocr_model
     if trocr_processor is None or trocr_model is None:
         logging.info("Loading TrOCR model (this may take a moment on first use)...")
+        from transformers import TrOCRProcessor, VisionEncoderDecoderModel
         trocr_processor = TrOCRProcessor.from_pretrained('microsoft/trocr-base-printed')
         trocr_model = VisionEncoderDecoderModel.from_pretrained('microsoft/trocr-base-printed')
         logging.info("TrOCR model loaded successfully")
@@ -282,6 +299,9 @@ def extract_text_from_image_tesseract(image_path):
     Enhanced Tesseract OCR implementation with complete preprocessing pipeline,
     similar to what we did with EasyOCR but optimized for speed
     """
+    if not PYTESSERACT_AVAILABLE:
+        return []
+    
     try:
         image = cv2.imread(image_path)
         if image is None:
@@ -519,6 +539,9 @@ def extract_text_from_image_easyocr(image_path):
     """
     Enhanced EasyOCR implementation with robust preprocessing for challenging images
     """
+    if not EASYOCR_AVAILABLE:
+        return []
+    
     try:
         # First check if file exists and is valid
         if not os.path.exists(image_path) or os.path.getsize(image_path) == 0:
@@ -930,49 +953,51 @@ def hybrid_ocr_extract(image_path):
             # TESSERACT with optimized settings for labels
             # --oem 1: Use LSTM neural net mode (best accuracy)
             # --psm 6: Uniform block of text (typical label layout)
-            tesseract_config = f'--oem 1 --psm 6 -c tessedit_char_whitelist={label_charset}'
-            
-            try:
-                # Get detailed output with confidence scores
-                tess_data = pytesseract.image_to_data(img_path, config=tesseract_config, output_type=pytesseract.Output.DICT)
+            if PYTESSERACT_AVAILABLE:
+                tesseract_config = f'--oem 1 --psm 6 -c tessedit_char_whitelist={label_charset}'
                 
-                # Extract lines with confidence filtering
-                for i, text in enumerate(tess_data['text']):
-                    conf = int(tess_data['conf'][i]) if tess_data['conf'][i] != -1 else 0
-                    if text.strip() and conf > 30:  # Only keep reasonably confident results
-                        variant_tess.append({
-                            'text': text.strip(),
-                            'confidence': conf,
-                            'source': f'Tesseract-{variant_name}'
-                        })
-                        
-            except Exception as e:
-                app.logger.warning(f"Tesseract failed on {variant_name}: {str(e)}")
+                try:
+                    # Get detailed output with confidence scores
+                    tess_data = pytesseract.image_to_data(img_path, config=tesseract_config, output_type=pytesseract.Output.DICT)
+                    
+                    # Extract lines with confidence filtering
+                    for i, text in enumerate(tess_data['text']):
+                        conf = int(tess_data['conf'][i]) if tess_data['conf'][i] != -1 else 0
+                        if text.strip() and conf > 30:  # Only keep reasonably confident results
+                            variant_tess.append({
+                                'text': text.strip(),
+                                'confidence': conf,
+                                'source': f'Tesseract-{variant_name}'
+                            })
+                            
+                except Exception as e:
+                    app.logger.warning(f"Tesseract failed on {variant_name}: {str(e)}")
             
             # EASYOCR with optimized settings
-            try:
-                # paragraph=False: Return individual text regions
-                # decoder='beamsearch': Better accuracy (slower)
-                # allowlist: Restrict to label characters
-                easy_results = easyocr_reader.readtext(
-                    img_path, 
-                    detail=1,  # Get confidence scores
-                    paragraph=False,
-                    decoder='beamsearch',
-                    allowlist=label_charset
-                )
-                
-                # Extract with confidence filtering
-                for bbox, text, conf in easy_results:
-                    if text.strip() and conf > 0.3:  # EasyOCR confidence is 0-1
-                        variant_easy.append({
-                            'text': text.strip(),
-                            'confidence': int(conf * 100),  # Normalize to 0-100
-                            'source': f'EasyOCR-{variant_name}'
-                        })
-                        
-            except Exception as e:
-                app.logger.warning(f"EasyOCR failed on {variant_name}: {str(e)}")
+            if EASYOCR_AVAILABLE:
+                try:
+                    # paragraph=False: Return individual text regions
+                    # decoder='beamsearch': Better accuracy (slower)
+                    # allowlist: Restrict to label characters
+                    easy_results = easyocr_reader.readtext(
+                        img_path, 
+                        detail=1,  # Get confidence scores
+                        paragraph=False,
+                        decoder='beamsearch',
+                        allowlist=label_charset
+                    )
+                    
+                    # Extract with confidence filtering
+                    for bbox, text, conf in easy_results:
+                        if text.strip() and conf > 0.3:  # EasyOCR confidence is 0-1
+                            variant_easy.append({
+                                'text': text.strip(),
+                                'confidence': int(conf * 100),  # Normalize to 0-100
+                                'source': f'EasyOCR-{variant_name}'
+                            })
+                            
+                except Exception as e:
+                    app.logger.warning(f"EasyOCR failed on {variant_name}: {str(e)}")
             
             # Track results per variant
             if variant_tess or variant_easy:
@@ -1149,10 +1174,15 @@ def process_image():
                     upscaled_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{uuid.uuid4().hex}_upscaled.jpg")
                     cv2.imwrite(upscaled_path, img_upscaled)
                     
-                    tess_text = pytesseract.image_to_string(upscaled_path, config='--psm 6')
-                    easy_results = easyocr_reader.readtext(upscaled_path, detail=0, paragraph=False)
-                    easy_text = '\n'.join(easy_results)
-                    all_text = tess_text + '\n' + easy_text
+                    all_text = ""
+                    if PYTESSERACT_AVAILABLE:
+                        tess_text = pytesseract.image_to_string(upscaled_path, config='--psm 6')
+                        all_text += tess_text
+                    
+                    if EASYOCR_AVAILABLE:
+                        easy_results = easyocr_reader.readtext(upscaled_path, detail=0, paragraph=False)
+                        easy_text = '\n'.join(easy_results)
+                        all_text += '\n' + easy_text
                     
                     if os.path.exists(upscaled_path):
                         os.remove(upscaled_path)
